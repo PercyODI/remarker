@@ -3,7 +3,11 @@
 const { asset, dest, name, on, port } = require('berber')
 const layout1 = require('layout1')
 const rename = require('gulp-rename')
-const { readFileSync } = require('fs')
+const frontMatter = require('gulp-front-matter')
+const gulpData = require('gulp-data')
+const vinyl = require('vinyl')
+const findUp = require('find-up')
+const { readFileSync, existsSync } = require('fs')
 const { join } = require('path')
 require('require-yaml')
 
@@ -36,16 +40,23 @@ on('config', config => {
   port(config.port || 6275)
   dest(config.dest || 'build')
 
-  asset(config.source || 'slides.md')
-    .pipe(rename({ basename: 'index', extname: '.html' }))
-    .pipe(layout1.nunjucks(layoutFilename, {
-      data: {
+  asset(config.source || config.sourceDir ? config.sourceDir + '/**/*.md' : undefined || 'src/**/*.md')
+    .pipe(rename({ extname: '.html' }))
+    .pipe(frontMatter({
+      property: 'frontMatter',
+      remove: true
+    }))
+    .pipe(gulpData(function (file) {
+      var isFoundUp = findUp.sync('base.css', {cwd: file.path})
+      return {
         script,
-        css: config.css || defaultCss,
-        title: config.title || '',
-        remarkConfig: config.remarkConfig || {}
+        baseCss: existsSync(isFoundUp) ?  readFileSync(isFoundUp) : defaultCss,
+        css: file.frontMatter.css || config.css || '',
+        title: file.frontMatter.title || config.title || '',
+        remarkConfig: file.frontMatter.remarkConfig || config.remarkConfig || {}
       }
     }))
+    .pipe(layout1.nunjucks(layoutFilename))
 
   const assets = config.assets || ['assets']
   assets.forEach(src => {

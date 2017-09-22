@@ -1,3 +1,4 @@
+source: ["slides.md", "anotherslide.md"]
 remarkConfig:
   highlightStyle: monokai
   highlightLanguage: remark
